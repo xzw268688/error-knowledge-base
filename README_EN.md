@@ -11,7 +11,14 @@
 
 ## Installation (Claude Code)
 
-Clone this repository, then copy the `error-knowledge-base/` directory into your project's `.claude/skills/` directory.
+Clone this repository, then copy the `error-knowledge-base/` directory to one of the following locations:
+
+| Installation | Location | Scope |
+|--------------|----------|-------|
+| **Global** | `~/.claude/skills/` | All projects |
+| **Project** | `项目/.claude/skills/` | Current project only |
+
+> **Note**: On first use, the skill will ask you to configure your knowledge base location. Defaults to `~/.claude/knowledge-base/` (global, shared across projects).
 
 ## Usage (Claude Code)
 
@@ -25,10 +32,10 @@ When the conversation contains error-resolved signals (e.g., "Fixed it", "Proble
 
 ## Knowledge Base Format
 
-The knowledge base is located at `.claude/knowledge-base/`, with one markdown file per error:
+Each time an error is saved, the skill displays the full storage path (default: `~/.claude/knowledge-base/`), with one markdown file per error:
 
 ```
-.claude/knowledge-base/
+~/.claude/knowledge-base/
 ├── 2026-09-05-npm-eresolve.md
 ├── 2026-09-03-python-oom.md
 └── ...

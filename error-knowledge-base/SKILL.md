@@ -9,7 +9,13 @@ description: "检索错误知识库，或在错误解决后将其记录到知识
 
 ## 存储位置
 
-知识库目录：`.claude/knowledge-base/`
+知识库路径优先级（首次使用时配置）：
+
+1. 配置文件 `~/.claude/error-knowledge-base-config.json`（仅含 `knowledge_base_path` 一个字段）
+2. 环境变量 `ERROR_KB_PATH`
+3. 默认 `~/.claude/knowledge-base/`
+
+**首次使用流程**：检测到没有配置文件且未设置环境变量时，询问用户自定义知识库路径。
 
 文件格式：`YYYY-MM-DD-error-slug.md`
 
@@ -29,7 +35,7 @@ description: "检索错误知识库，或在错误解决后将其记录到知识
 
 ## 检索流程
 
-1. 读取 `.claude/knowledge-base/` 目录下所有 `.md` 文件
+1. 读取配置的知识库路径下所有 `.md` 文件（目录不存在则先创建）
 2. 语义匹配当前问题与历史记录
 3. 返回匹配度最高的 1-3 条记录（如有）
 4. 未找到时告知"知识库中无相似错误记录"
@@ -38,7 +44,8 @@ description: "检索错误知识库，或在错误解决后将其记录到知识
 
 1. 用户确认后，提取错误信息与解决方案
 2. 自动生成 markdown 文件，包含结构化 frontmatter
-3. 写入 `.claude/knowledge-base/YYYY-MM-DD-error-slug.md`
+3. 写入到配置的知识库路径下：`{knowledge_base_path}/YYYY-MM-DD-error-slug.md`
+4. **显示完整文件路径**给用户，方便后续查找：
 
 ## 文件格式
 

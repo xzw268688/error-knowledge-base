@@ -11,7 +11,14 @@
 
 ## 安装（Claude Code）
 
-克隆本仓库，然后将 `error-knowledge-base/` 目录复制到你项目的 `.claude/skills/` 目录下。
+克隆本仓库，然后将 `error-knowledge-base/` 目录复制到以下位置之一：
+
+| 安装方式 | 复制到 | 适用范围 |
+|---------|--------|---------|
+| **全局** | `~/.claude/skills/` | 所有项目可用 |
+| **项目** | `当前项目/.claude/skills/` | 仅当前项目可用 |
+
+> **注意**：首次使用时，skill 会主动询问您自定义知识库位置，默认存储至 `~/.claude/knowledge-base/`（全局共享）。
 
 ## 使用（Claude Code）
 
@@ -25,10 +32,10 @@
 
 ## 知识库格式
 
-知识库位于 `.claude/knowledge-base/`，每条错误一个 markdown 文件：
+每次保存错误时，skill 会显示完整的存储路径（默认：`~/.claude/knowledge-base/`），每条错误一个 markdown 文件：
 
 ```
-.claude/knowledge-base/
+~/.claude/knowledge-base/
 ├── 2026-09-05-npm-eresolve.md
 ├── 2026-09-03-python-oom.md
 └── ...
