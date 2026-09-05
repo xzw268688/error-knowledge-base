@@ -11,15 +11,7 @@
 
 ## 安装（Claude Code）
 
-将技能包复制到你的项目中：
-
-```bash
-# 克隆仓库
-git clone git@github.com:xzw268688/error-knowledge-base.git
-
-# 复制技能包到 Claude Code skills 目录
-cp -r error-knowledge-base/.claude/skills/error-knowledge-base 你的项目/.claude/skills/
-```
+克隆本仓库，然后将 `error-knowledge-base/` 目录复制到你项目的 `.claude/skills/` 目录下。
 
 ## 使用（Claude Code）
 

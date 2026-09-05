@@ -11,15 +11,7 @@
 
 ## Installation (Claude Code)
 
-Copy the skill package to your project:
-
-```bash
-# Clone the repository
-git clone git@github.com:xzw268688/error-knowledge-base.git
-
-# Copy skill package to Claude Code skills directory
-cp -r error-knowledge-base/.claude/skills/error-knowledge-base your-project/.claude/skills/
-```
+Clone this repository, then copy the `error-knowledge-base/` directory into your project's `.claude/skills/` directory.
 
 ## Usage (Claude Code)
 
