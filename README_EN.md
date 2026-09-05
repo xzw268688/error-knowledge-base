@@ -18,7 +18,7 @@ Clone this repository, then copy the `error-knowledge-base/` directory to one of
 | **Global** | `~/.claude/skills/` | All projects |
 | **Project** | `项目/.claude/skills/` | Current project only |
 
-> **Note**: On first use, the skill will ask you to configure your knowledge base location. Defaults to `~/.claude/knowledge-base/` (global, shared across projects).
+> **Note**: On first use, the skill will ask you to configure your knowledge base location. It's recommended to set it to another drive (e.g., D: drive) to reduce C drive pressure and enable easy portability across machines. Defaults to `~/.claude/knowledge-base/`.
 
 ## Usage (Claude Code)
 
