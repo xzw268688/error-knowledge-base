@@ -1,0 +1,64 @@
+# Error Knowledge Base (error-knowledge-base)
+
+> Manage personal/project error-resolution experience: search historical solutions for similar errors, record newly resolved issues.
+
+## Features
+
+- **When encountering an error**: Automatically search the knowledge base and return solution steps for similar errors
+- **After solving an error**: Automatically detect "error resolved" signals and suggest recording it to the knowledge base
+- **Semantic matching**: Understands errors that are essentially the same but described differently
+- **Structured records**: Error information is stored as markdown files in a consistent format
+
+## Installation (Claude Code)
+
+Copy the skill package to your project:
+
+```bash
+# Clone the repository
+git clone git@github.com:xzw268688/error-knowledge-base.git
+
+# Copy skill package to Claude Code skills directory
+cp -r error-knowledge-base/.claude/skills/error-knowledge-base your-project/.claude/skills/
+```
+
+## Usage (Claude Code)
+
+### Query historical errors
+
+When you describe an error in a conversation (e.g., "Got an ERESOLVE error during npm install"), the Skill automatically searches the knowledge base and returns similar resolution records.
+
+### Record new errors
+
+When the conversation contains error-resolved signals (e.g., "Fixed it", "Problem resolved"), the Skill will prompt: "Would you like to record this error to the knowledge base?"
+
+## Knowledge Base Format
+
+The knowledge base is located at `.claude/knowledge-base/`, with one markdown file per error:
+
+```
+.claude/knowledge-base/
+├── 2026-09-05-npm-eresolve.md
+├── 2026-09-03-python-oom.md
+└── ...
+```
+
+Each record automatically generates a structured markdown file:
+
+```yaml
+---
+title: npm Dependency Conflict
+error_type: ERESOLVE
+tags: [npm, dependency-conflict]
+files: [package.json]
+---
+## Solution Steps
+...
+```
+
+## Contributing
+
+Feel free to submit your error records to help others avoid common pitfalls.
+
+## License
+
+See [LICENSE](LICENSE).
