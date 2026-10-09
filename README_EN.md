@@ -1,63 +1,237 @@
-# Error Knowledge Base (error-knowledge-base)
+# Error Knowledge Base Skill (error-knowledge-base)
 
-> Manage personal/project error-resolution experience: search historical solutions for similar errors, record newly resolved issues.
+> Manage your error-resolution experience: search historical solutions for similar errors, record newly solved problems.
 
-## Features
+**Key Features**:
+- **Zero-config migration** — Stateless indexing, dynamic scan on each retrieval
+- **Lightweight keyword matching + LLM reranking** — Balance speed and accuracy
+- **Duplicate detection** — Auto-prompt on suspected duplicates during recording
 
-- **When encountering an error**: Automatically search the knowledge base and return solution steps for similar errors
-- **After solving an error**: Automatically detect "error resolved" signals and suggest recording it to the knowledge base
-- **Semantic matching**: Understands errors that are essentially the same but described differently
-- **Structured records**: Error information is stored as markdown files in a consistent format
+---
 
-## Installation (Claude Code)
+## What Problem It Solves
 
-Clone this repository, then copy the `error-knowledge-base/` directory to one of the following locations:
+Errors in development tend to repeat:
 
-| Installation | Location | Scope |
-|--------------|----------|-------|
-| **Global** | `~/.claude/skills/` | All projects |
-| **Project** | `项目/.claude/skills/` | Current project only |
+- The npm ERESOLVE conflict you fixed today shows up again next week in a different project
+- The same Docker port conflicts, database connection pool exhaustion, memory leaks
+- Every time you need to search Stack Overflow or dig through chat history
+- Agents keep exploring the same errors from scratch
 
-> **Note**: On first use, the skill will ask you to configure your knowledge base location. It's recommended to set it to another drive (e.g., D: drive) to reduce C drive pressure and enable portability and cross-project reuse. Defaults to `~/.claude/knowledge-base/`.
+This Skill turns your error-resolution experience into a searchable knowledge base:
 
-## Usage (Claude Code)
+- **When encountering an error**: Auto-search historical solutions to avoid repeating mistakes
+- **After solving**: Auto-prompt to record, forming a closed loop
+- **Agent self-discovery**: When Agent solves a new error independently, proactively prompts to record
 
-### Query historical errors
+---
 
-When you describe an error in a conversation (e.g., "Got an ERESOLVE error during npm install"), the Skill automatically searches the knowledge base and returns similar resolution records.
+## Core Principles
 
-### Record new errors
+1. **On-demand trigger**: Skill only acts when you mention errors, doesn't run in background
+2. **Zero-input record**: Just say "fixed it" after solving, Skill auto-extracts information
+3. **Agent collaboration**: Agent can discover and solve new errors independently, then record
+4. **Privacy protection**: By default doesn't read local data unless user explicitly requests
 
-When the conversation contains error-resolved signals (e.g., "Fixed it", "Problem resolved"), the Skill will prompt: "Would you like to record this error to the knowledge base?"
+---
 
-## Knowledge Base Format
+## Installation
 
-Each time an error is saved, the skill displays the full storage path (default: `~/.claude/knowledge-base/`), with one markdown file per error:
+```bash
+# Clone and install
+git clone https://github.com/xzw268688/error-knowledge-base.git
+cd error-knowledge-base
+
+# macOS / Linux
+bash install.sh
+
+# Windows (PowerShell)
+powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1
+```
+
+Already installed? Add `--force` (sh) or `-Force` (ps1) to reinstall.
+
+---
+
+## Verify Installation
+
+```bash
+# Check if skill is installed correctly
+ls ~/.claude/skills/error-knowledge-base/
+# Should see: SKILL.md
+```
+
+---
+
+## First Use Configuration
+
+**Step 1: Configure Knowledge Base Path**
+
+On first use of the skill, you'll be prompted for the knowledge base storage location. You can also configure manually in advance:
+
+```json
+// ~/.claude/error-knowledge-base-config.json
+{
+  "knowledge_base_path": "~/.claude/knowledge-base/"
+}
+```
+
+**Path Priority**:
+1. Config file `~/.claude/error-knowledge-base-config.json` (highest priority)
+2. Environment variable `ERROR_KB_PATH`
+3. Default `~/.claude/knowledge-base/`
+
+**Migration Guide**:
+- Simply copy the entire knowledge base folder to any location
+- Update `knowledge_base_path` in the config file
+- Restart Claude Code
+- **No index rebuild needed** — Dynamic scan on each retrieval, stateless design
+
+---
+
+## Usage
+
+### Scenario 1: Search Errors
+
+Just describe the issue:
+```
+npm install failing with ERESOLVE error
+```
+
+The skill will search the knowledge base and return similar records with solutions.
+
+### Scenario 2: Agent Self-Discovery
+
+When Agent encounters unknown errors during task execution and solves them:
+```
+Agent: I just solved a new error, want to record it?
+       [Confirm] [Skip] [Not now]
+```
+
+### Scenario 3: Record After Solving
+
+After solving, say:
+```
+Fixed it, used --legacy-peer-deps
+```
+
+The skill will extract information and prompt for confirmation.
+
+### View Records
 
 ```
-~/.claude/knowledge-base/
-├── 2026-09-05-npm-eresolve.md
-├── 2026-09-03-python-oom.md
-└── ...
+Show my error records
 ```
 
-Each record automatically generates a structured markdown file:
+### View Stats
+
+```
+Knowledge base stats
+```
+
+---
+
+## Matching Strategy
+
+- **Semantic understanding as primary** + structured fields (tags, error_type) for auxiliary filtering
+- Covers fuzzy matching (e.g., "OOM" vs "Out of Memory")
+- **Lightweight keyword matching fallback**: Extract `search_keywords` field for rapid candidate filtering
+
+---
+
+## Migration & Portability
+
+**Zero-config migration**:
+1. Copy the entire `{knowledge_base_path}` folder to any location
+2. Update `knowledge_base_path` in the config file
+3. Restart Claude Code
+
+**No index rebuild needed** — Dynamic scan of the knowledge base directory on each retrieval, stateless design.
+
+---
+
+## Troubleshooting
+
+### Issue 1: No configuration wizard on first use
+
+**Possible causes**:
+1. Skill not properly installed — Run `ls ~/.claude/skills/error-knowledge-base/` to check
+2. Config file already exists — Check if `~/.claude/error-knowledge-base-config.json` exists
+
+### Issue 2: No records found in search
+
+**Possible causes**:
+1. Incorrect knowledge base path — Verify the configured path exists
+2. Empty knowledge base — Create a few test records manually (see [File Format](#file-format))
+3. New records missing `search_keywords` field
+
+### Issue 3: Not working after migration
+
+**Solution**:
+1. Confirm `.md` files exist in new path — `ls {new_path}/`
+2. Check if config file path was updated — `cat ~/.claude/error-knowledge-base-config.json`
+3. Restart Claude Code to refresh environment
+
+### Issue 4: Suspected duplicate record detected
+
+This is expected behavior. The system will remind you of potential duplicates:
+- **[Confirm create]** — It's indeed a new scenario
+- **[Cancel]** — Duplicate of existing record
+- **[View old record]** — Check if the existing solution works first
+
+---
+
+## File Format
+
+Each record is a markdown file:
 
 ```yaml
 ---
-title: npm Dependency Conflict
-error_type: ERESOLVE
-tags: [npm, dependency-conflict]
-files: [package.json]
+title: "npm dependency conflict"
+date: "2026-09-05"
+tags: ["npm", "peer-dependencies"]
+error_type: "ERESOLVE"
+files: ["package.json"]
+search_keywords: ["npm install", "eresolve", "peer dependency", "--legacy-peer-deps"]
+draft: false
 ---
-## Solution Steps
+
+# Error Phenomenon
+...
+
+# Solution Steps
+...
+
+# Root Cause Analysis (optional)
 ...
 ```
 
-## Contributing
+File naming rule: `YYYY-MM-DD-error-slug.md` (date + short error description)
 
-Feel free to submit your error records to help others avoid common pitfalls.
+---
 
-## License
+## Directory Structure
 
-See [LICENSE](LICENSE).
+```
+Repository/
+├── error-knowledge-base/
+│   └── SKILL.md                  # skill main file (skill package)
+├── README.md                     # Chinese documentation
+├── README_EN.md                  # English documentation
+└── CLAUDE.md                     # Requirements doc (for development)
+
+User local/
+├── ~/.claude/skills/error-knowledge-base/   # skill installation location
+└── {knowledge_base_path}/                   # knowledge base data
+    ├── 2026-09-05-npm-eresolve.md
+    ├── 2026-09-03-python-oom.md
+    └── ...
+```
+
+---
+
+## Related Files
+
+- `error-knowledge-base/SKILL.md` - Skill implementation details
+- `CLAUDE.md` - Requirements doc
+- `README.md` - Chinese documentation
