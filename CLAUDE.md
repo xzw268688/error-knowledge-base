@@ -29,6 +29,9 @@
   tags: [标签 1, 标签 2]
   error_type: 错误类型/错误码
   files: [相关文件路径]
+  search_keywords: [检索关键词，含英文原形]
+  draft: false
+  status: verified   # verified | draft | deprecated
   ---
 
   # 错误现象
@@ -48,7 +51,8 @@
 
 | 需求点 | 方案 | 理由 |
 |--------|------|------|
-| 相似性判断 | 语义理解 + 结构化字段辅助 | 覆盖模糊匹配（"OOM" vs "内存溢出"） |
+| 相似性判断 | 语义理解 + 结构化字段辅助**排序** | 覆盖模糊匹配（"OOM" vs "内存溢出"）；关键词匹配**不得**作为召回门槛，否则语义层形同虚设 |
+| 记录时效 | `status` 字段 + 检索/统计时主动提示 12 个月前的记录 | 状态字段若无维护机制，三个月后必然全是 `verified`，等于没加 |
 | 记录触发 | 自动识别"错误已解决"，主动询问 | 比纯手动更主动，比全自动更可控 |
 | 检索触发 | 检测到错误类型即检索 | 符合"下次遇到问题先调用 skill"需求 |
 | 存储组织 | 一个 markdown 文件一条记录 | 结构清晰，独立管理 |
@@ -72,6 +76,8 @@
 仓库/
 ├── error-knowledge-base/
 │   └── SKILL.md                  # skill 主文件（技能包）
+├── examples/
+│   └── knowledge-base/           # 示例记录，供新用户快速验证
 ├── README.md                     # 使用说明
 ├── README_EN.md                  # 英文说明
 └── CLAUDE.md                     # 需求文档（本文件）
@@ -100,3 +106,17 @@
 - `README.md` - 用户使用说明
 - `README_EN.md` - English user guide
 - `error-knowledge-base/SKILL.md` - 技能实现细节
+
+## Agent skills
+
+### Issue tracker
+
+Issue 记录在 GitHub Issues（github.com/xzw268688/error-knowledge-base），通过 `gh` CLI 读写。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用五个规范角色名作为标签：`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单 context 布局：`CONTEXT.md` + `docs/adr/` 位于仓库根目录。详见 `docs/agents/domain.md`。

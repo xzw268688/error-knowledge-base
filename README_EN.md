@@ -4,8 +4,9 @@
 
 **Key Features**:
 - **Zero-config migration** — Stateless indexing, dynamic scan on each retrieval
-- **Lightweight keyword matching + LLM reranking** — Balance speed and accuracy
+- **Keyword weighting + LLM semantic reranking** — Keywords only affect ordering, never block recall
 - **Duplicate detection** — Auto-prompt on suspected duplicates during recording
+- **Status flag** — Records can be marked verified / deprecated
 
 ---
 
@@ -60,6 +61,29 @@ Already installed? Add `--force` (sh) or `-Force` (ps1) to reinstall.
 ls ~/.claude/skills/error-knowledge-base/
 # Should see: SKILL.md
 ```
+
+### Quick Check (recommended)
+
+The repo ships with 8 sample records. Copy them into your knowledge base path to see the skill work immediately:
+
+```bash
+# macOS / Linux
+cp examples/knowledge-base/*.md ~/.claude/knowledge-base/
+
+# Windows (PowerShell)
+Copy-Item examples\knowledge-base\*.md $env:USERPROFILE\.claude\knowledge-base\
+```
+
+Then ask a question phrased **completely differently** from the samples to verify semantic retrieval:
+
+```
+memory blew up, what do I do
+```
+
+It should hit both the Python `MemoryError` and the JVM `OOMKilled` records —
+even though not a single word in your input literally matches their `search_keywords`.
+
+Delete the copied files when you're done.
 
 ---
 
@@ -129,13 +153,19 @@ Show my error records
 Knowledge base stats
 ```
 
+Prints total records, active/deprecated split, records added in the last 30 days, plus breakdowns by month, top 10 tags, and top 10 error types.
+
 ---
 
 ## Matching Strategy
 
-- **Semantic understanding as primary** + structured fields (tags, error_type) for auxiliary filtering
+- **Semantic understanding as primary** + structured fields (tags, error_type) for auxiliary ranking
 - Covers fuzzy matching (e.g., "OOM" vs "Out of Memory")
-- **Lightweight keyword matching fallback**: Extract `search_keywords` field for rapid candidate filtering
+- **Keywords only affect ordering, they never gate recall**: matching on `search_keywords`, `tags`, or `error_type`
+  decides a record's **rank**, not whether it can be retrieved at all. A record scoring zero on every keyword
+  is still handed to the LLM reranker — an earlier version treated keyword matching as a recall gate,
+  which made the semantic layer unreachable. Now fixed
+- Records with `status: deprecated` are excluded from retrieval but kept as historical reference
 
 ---
 
@@ -162,8 +192,9 @@ Knowledge base stats
 
 **Possible causes**:
 1. Incorrect knowledge base path — Verify the configured path exists
-2. Empty knowledge base — Create a few test records manually (see [File Format](#file-format))
-3. New records missing `search_keywords` field
+2. Empty knowledge base — Copy `examples/knowledge-base/*.md` into your knowledge base path for a quick check
+3. New records missing `search_keywords` — doesn't block recall, but ranks lower
+4. All records marked `status: deprecated` — you'll get "no valid records in the knowledge base"
 
 ### Issue 3: Not working after migration
 
@@ -194,6 +225,7 @@ error_type: "ERESOLVE"
 files: ["package.json"]
 search_keywords: ["npm install", "eresolve", "peer dependency", "--legacy-peer-deps"]
 draft: false
+status: "verified"   # verified | draft | deprecated
 ---
 
 # Error Phenomenon
@@ -216,6 +248,8 @@ File naming rule: `YYYY-MM-DD-error-slug.md` (date + short error description)
 Repository/
 ├── error-knowledge-base/
 │   └── SKILL.md                  # skill main file (skill package)
+├── examples/
+│   └── knowledge-base/           # sample records for a quick check
 ├── README.md                     # Chinese documentation
 ├── README_EN.md                  # English documentation
 └── CLAUDE.md                     # Requirements doc (for development)

@@ -9,8 +9,9 @@ description: "错误知识库：检索历史错误或记录新错误"
 
 **核心特性**：
 - **零配置迁移** — 无状态索引，每次动态扫描
-- **轻量关键词匹配 + LLM 精排** — 兼顾速度与精度
+- **关键词加权 + LLM 语义精排** — 关键词只影响排序，永远不会阻断语义召回
 - **重复检测** — 录入时自动提示疑似重复
+- **状态标记** — 记录可标记为已验证 / 已过时，检索时优先呈现有效方案
 
 ---
 
@@ -56,6 +57,17 @@ npm install 报 ERESOLVE 怎么办
 ```
 知识库情况
 ```
+
+### 标记记录状态
+
+```
+这个方案过时了
+上面第一条验证过了
+```
+
+### 快速验证（知识库为空时）
+
+仓库 `examples/knowledge-base/` 下有 8 条示例记录，可复制到知识库路径试跑完整流程。
 
 ---
 
@@ -113,17 +125,24 @@ for file in files:
         "tags": frontmatter.tags or [],
         "error_type": frontmatter.error_type,
         "search_keywords": frontmatter.search_keywords or [],
+        "status": frontmatter.status or "verified",
         "full_content": content
     })
 ```
 
-#### Step 3: 关键词匹配（快速筛选）
+#### Step 3: 关键词加权（仅影响排序，不做召回）
+
+> ⚠️ **设计约束**：关键词匹配的结果**只能用于提高排序权重，绝不能用来决定"有没有候选"**。
+> 早期版本把关键词匹配当作召回门槛，导致"OOM"检索"内存溢出"这类表述不同但本质相同的错误时筛出 0 条，
+> Step 4 的语义精排根本不会执行，直接返回"无相似记录"。语义能力被前置的字面过滤器掐死了。
 
 ```pseudo
 query_keywords = extract_keywords(user_query)  # 提取用户 query 中的关键词
-filtered_candidates = []
 
-for candidate in candidates:
+# 有效性过滤：已标记过时的记录不参与召回
+active_candidates = [c for c in candidates if c.status != "deprecated"]
+
+for candidate in active_candidates:
     match_score = 0
     
     # 匹配 error_type
@@ -140,20 +159,27 @@ for candidate in candidates:
         if any(kw in q for q in query_keywords) or any(q in kw for q in query_keywords):
             match_score += 10
     
-    if match_score > 0:
-        candidate["match_score"] = match_score
-        filtered_candidates.append(candidate)
+    candidate["match_score"] = match_score
 
-# 按分数排序，取前 20 个候选
-filtered_candidates.sort_by("match_score", desc=True)
-candidate_list = filtered_candidates[:20]
+# 按关键词得分排序（得分相同则按日期倒序，新的优先）
+active_candidates.sort_by([("match_score", desc), ("date", desc)])
+
+# 截断上限：知识库规模增长后避免把上千条记录塞进 prompt
+# 上限放宽到 50 —— 语义精排本身很便宜，召回率比省这点 token 重要
+candidate_list = active_candidates[:50]
 ```
+
+**兜底规则**：若 `candidate_list` 中**所有记录得分都是 0**
+（典型场景：用户用完全不同的表述提问），仍然照常进入 Step 4——
+关键词得分为 0 只意味着排序上靠后，**不意味着不相关**。语义精排正是为这种输入准备的。
 
 #### Step 4: LLM 语义精排
 
 ```pseudo
-if len(candidate_list) == 0:
-    return "知识库中无相似错误记录"
+# 注意：此处不设"候选为空即返回"的早退分支。
+# 唯一允许早退的情况是知识库确实一条有效记录都没有。
+if len(active_candidates) == 0:
+    return "知识库中没有有效记录（可能全部被标记为已过时）"
 
 # 构造精排 prompt
 prompt = """
@@ -161,11 +187,14 @@ prompt = """
 用户查询："{user_query}"
 
 请评估每条记录与用户查询的相关性，给出 0-100 的匹配度分数。
+判断时忽略措辞差异，只看**问题本身是否同类**——
+"OOM"、"内存溢出"、"OutOfMemoryError"、"内存爆了"应当视为同一个问题。
 
 候选记录：
 {candidate_list_formatted}
 
 请按相关性从高到低排序，返回 Top 5。
+若没有任何一条相关度超过 30 分，返回空列表。
 """
 
 ranked_results = llm_rerank(prompt)
@@ -175,14 +204,26 @@ ranked_results = llm_rerank(prompt)
 
 ```pseudo
 if len(ranked_results) == 0:
-    return "知识库中无相似错误记录"
+    print("知识库中无相似错误记录。")
+    print("可以换个说法再问一次，或用「记录这个错误」把这次的解决方案存进来。")
+    return
 
 print(f"找到 {len(ranked_results)} 条相似记录:")
 for i, result in enumerate(ranked_results, 1):
     print(f"\n### {i}. {result.title} [匹配度 {result.score}%]")
     print(f"📅 {result.date} | 🏷️ {', '.join(result.tags)} | 🔧 {result.error_type}")
+    if result.status == "verified":
+        print(f"✅ 状态：已验证有效")
     print(f"\n**错误现象**：{extract_error_phenomenon(result.full_content)}")
     print(f"**解决方案**：{extract_solution(result.full_content)}")
+
+# 时效性提醒：超过 12 个月的记录，其解决方案可能已随版本变化失效
+stale_results = [r for r in ranked_results if is_older_than(r.date, months=12)]
+if len(stale_results) > 0:
+    print(f"\n⚠️ 其中 {len(stale_results)} 条记录已超过 12 个月：")
+    for r in stale_results:
+        print(f"   - {r.title}（{r.date}）")
+    print("   如果方案已失效，请告诉我，我会帮你标记为「已过时」。")
 
 print("\n要我现在帮你执行解决方案吗？")
 ```
@@ -221,7 +262,8 @@ prompt = """
 4. 根因分析（如果有明确的原因说明）
 5. error_type（错误类型或错误码，如"ERESOLVE"）
 6. tags（3-5 个标签，如 ["npm", "peer-dependencies"]）
-7. search_keywords（5-8 个搜索关键词，用于快速检索）
+7. search_keywords（5-8 个搜索关键词，**必须包含英文/错误码原形**，例如 OOM 与 内存溢出 要能互相命中）
+8. status（"verified" 或 "draft"：信息完整、已实际验证过 → verified；否则 → draft）
 
 对话上下文：
 {conversation_history}
@@ -310,6 +352,107 @@ print(f"   路径：{kb_path}/{filename}")
 
 ---
 
+### 流程 3: 查看知识库统计
+
+触发方式：用户说「知识库情况」「我的错误统计」「看看有多少条记录」等。
+
+> **口径说明**：这里的"解决量"= **入库记录数**，即用户实际记录过的错误条数。
+> 刻意**不统计检索命中次数**——知识库是纯 markdown 文件夹，没有任何埋点，
+> 为了统计命中而引入写入计数文件会破坏"零配置迁移、无状态"的核心设计。
+
+```pseudo
+# Step 1: 扫描（与流程 1 Step 2 共用）
+candidates = scan_and_extract(kb_path)   # 含 title/date/tags/error_type/status
+
+if len(candidates) == 0:
+    print("知识库为空，暂无记录。")
+    return
+
+# Step 2: 聚合
+total = len(candidates)
+active = count(c.status != "deprecated")
+deprecated = total - active
+
+by_month = group_count(candidates, key=lambda c: c.date[:7])   # "2026-09" → n
+by_tag = group_count(candidates, key=lambda c: c.tags)          # 每个标签独立计数
+by_error_type = group_count(candidates, key=lambda c: c.error_type)
+
+recent_30d = count(c.is_within_days(30))
+
+# Step 3: 输出
+print(f"📊 知识库统计（共 {total} 条记录，路径：{kb_path}）\n")
+
+print(f"有效记录：{active} 条    已过时：{deprecated} 条    近 30 天新增：{recent_30d} 条\n")
+
+print("按月份：")
+for month, n in sorted(by_month.items(), reverse=True):
+    print(f"  {month}  {'█' * n} {n}")
+
+print("\n按标签（前 10）：")
+for tag, n in sorted(by_tag.items(), key=lambda kv: kv[1], reverse=True)[:10]:
+    print(f"  {tag:<20} {n}")
+
+print("\n按错误类型（前 10）：")
+for et, n in sorted(by_error_type.items(), key=lambda kv: kv[1], reverse=True)[:10]:
+    print(f"  {et:<30} {n}")
+
+# 覆盖度提示：只出现过一次的标签说明分类粒度可能太细
+singleton_tags = [t for t, n in by_tag.items() if n == 1]
+if len(singleton_tags) > len(by_tag) * 0.6 and len(by_tag) > 5:
+    print(f"\n💡 {len(singleton_tags)}/{len(by_tag)} 个标签只用过一次，标签体系可能偏碎，建议合并同类项。")
+```
+
+**处理边界情况**：
+- 某条记录缺 `date` → 归入 `unknown` 分组，不中断统计
+- 某条记录缺 `tags` → 不计入标签统计，但计入总数
+- `by_error_type` 中的空值统一显示为 `未分类`
+
+---
+
+### 流程 4: 更新记录状态
+
+状态字段是知识库能否长期可信的关键。**没有维护机制的状态字段，三个月后会全是 `verified`，等于没加。**
+因此状态变更必须由明确触发，不允许静默发生。
+
+```pseudo
+# 触发信号
+mark_stale_signals = ["过时", "不管用了", "失效了", "没用了", "已修复", "升级后好了"]
+mark_verified_signals = ["验证过了", "确实有效", "按这个解决了", "验证通过"]
+
+# Step 1: 定位目标记录
+# 优先级：① 上一轮检索结果中用户明确指认的那条
+#        ② 用户给的文件名或标题（模糊匹配，列出候选让用户选）
+#        ③ 都不明确 → 列出最近的记录让用户选，绝不猜
+
+# Step 2: 确认变更
+print(f"将 {file} 的 status 从 {old_status} 改为 {new_status}")
+action = ask_user("确认？", options=["确认", "取消"])
+
+# Step 3: 改写frontmatter（只动 status 一行，正文与格式保持不变）
+frontmatter = parse_yaml(extract_frontmatter(content))
+frontmatter["status"] = new_status
+new_content = replace_frontmatter(content, frontmatter)
+write(file, new_content)
+
+print(f"✅ 已更新：{file}")
+if new_status == "deprecated":
+    print("   该记录不再参与检索，但仍保留在知识库中作为历史参考。")
+```
+
+**`status` 的语义**：
+
+| 值 | 含义 | 是否参与检索 |
+|----|------|-------------|
+| `verified` | 方案已实际验证有效（默认） | 是 |
+| `draft` | 信息不全，方案未经验证 | 是，但在结果中提示 |
+| `deprecated` | 已确认过时或失效 | 否 |
+
+**维护节奏**：流程 3 的统计输出和流程 1 的检索结果都会主动列出超过 12 个月的记录，
+用户一旦反馈"这个不管用了"即走本流程，形成闭环。**不要试图自动把旧记录改成 `deprecated`**——
+自动判定"过时"必然误伤，正确性只能来自用户的确认。
+
+---
+
 ## 文件格式
 
 每条记录是一个 markdown 文件：
@@ -323,6 +466,7 @@ error_type: "ERESOLVE"
 files: ["package.json"]
 search_keywords: ["npm install", "eresolve", "peer dependency", "--legacy-peer-deps", "npm conflict"]
 draft: false
+status: "verified"
 ---
 
 # 错误现象
@@ -416,8 +560,9 @@ npm ERR! ERESOLVE could not resolve
 
 **可能原因**：
 1. 知识库路径配置错误 — 检查配置文件中的路径是否存在
-2. 知识库为空 — 先手动创建几条测试记录
-3. 记录缺少 `search_keywords` 字段
+2. 知识库为空 — 先手动创建几条测试记录，或复制仓库中的 `examples/knowledge-base/*.md` 快速验证
+3. 记录缺少 `search_keywords` 字段 — **不影响召回**（语义精排兜底），但排序会靠后
+4. 记录全部被标记为 `deprecated` — 此时会返回"知识库中没有有效记录"，用流程 4 恢复
 
 ### 问题 3: 迁移后无法使用
 

@@ -50,6 +50,29 @@ ls ~/.claude/skills/error-knowledge-base/
 # 应看到: SKILL.md
 ```
 
+### 快速验证（推荐）
+
+仓库自带 8 条示例记录，复制到你的知识库路径即可立刻试出效果：
+
+```bash
+# macOS / Linux
+cp examples/knowledge-base/*.md ~/.claude/knowledge-base/
+
+# Windows (PowerShell)
+Copy-Item examples\knowledge-base\*.md $env:USERPROFILE\.claude\knowledge-base\
+```
+
+然后直接问一个和示例**措辞完全不同**的问题，验证语义检索是否生效：
+
+```
+内存爆了怎么办
+```
+
+它应该能同时命中示例中的 Python `MemoryError` 和 JVM `OOMKilled` 两条记录——
+即使你的输入里没有任何一个字符和它们的 `search_keywords` 字面重合。
+
+用完想清空，删掉这些文件即可。
+
 ---
 
 ## 首次使用配置
@@ -112,6 +135,8 @@ Agent：我刚刚解决了一个新错误，是否记录？
 知识库情况
 ```
 
+输出：总记录数、有效/已过时分布、近 30 天新增、按月份、按标签 Top 10、按错误类型 Top 10。
+
 ## 存储位置配置
 
 知识库路径优先级：
@@ -135,6 +160,9 @@ date: YYYY-MM-DD
 tags: [标签 1, 标签 2]
 error_type: 错误类型/错误码
 files: [相关文件路径]
+search_keywords: [检索关键词, 含英文原形]
+draft: false
+status: verified   # verified | draft | deprecated
 ---
 
 # 错误现象
@@ -151,9 +179,13 @@ files: [相关文件路径]
 
 ## 匹配策略
 
-- **语义理解为主** + 结构化字段（tags、error_type）辅助过滤
+- **语义理解为主** + 结构化字段（tags、error_type）辅助排序
 - 覆盖模糊匹配（如"OOM" vs "内存溢出"）
-- **轻量关键词匹配 fallback**：提取 `search_keywords` 字段快速筛候选集
+- **关键词只影响排序，从不阻断召回**：`search_keywords`、`tags`、`error_type` 命中与否，
+  决定的是候选记录的**排序权重**，不是"能不能被检索到"。
+  即使关键词全部得分为 0，记录依然会交给 LLM 语义精排——
+  早期版本把关键词匹配当作召回门槛，导致语义检索形同虚设，现已修正
+- `status: deprecated` 的记录不参与检索，但仍保留作为历史参考
 
 ## 迁移与可移植性
 
@@ -178,8 +210,9 @@ files: [相关文件路径]
 
 **可能原因**：
 1. 知识库路径配置错误 — 检查配置文件中的路径是否存在
-2. 知识库为空 — 先手动创建几条测试记录（参考 [文件格式](#文件格式)）
-3. 新录入的记录缺少 `search_keywords` 字段
+2. 知识库为空 — 先复制 `examples/knowledge-base/*.md` 到知识库路径快速验证
+3. 新录入的记录缺少 `search_keywords` 字段 — 不影响召回，但排序会靠后
+4. 记录全部被标记为 `status: deprecated` — 会返回"知识库中没有有效记录"
 
 ### 问题 3: 迁移后无法使用
 
@@ -201,6 +234,8 @@ files: [相关文件路径]
 仓库/
 ├── error-knowledge-base/
 │   └── SKILL.md                  # skill 主文件（技能包）
+├── examples/
+│   └── knowledge-base/           # 示例记录，用于快速验证
 ├── README.md                     # 中文说明
 ├── README_EN.md                  # 英文说明
 └── CLAUDE.md                     # 需求文档（开发用）
