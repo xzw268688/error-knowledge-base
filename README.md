@@ -1,5 +1,7 @@
 # Error Knowledge Base Skill (error-knowledge-base)
 
+[English](README_EN.md) | 简体中文
+
 > 管理个人/项目的错误解决经验：遇到问题自动检索历史方案，解决问题后自动记录。
 
 ## 它解决什么问题

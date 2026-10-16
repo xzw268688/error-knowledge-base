@@ -1,5 +1,7 @@
 # Error Knowledge Base Skill (error-knowledge-base)
 
+English | [简体中文](README.md)
+
 > Manage your error-resolution experience: search historical solutions for similar errors, record newly solved problems.
 
 **Key Features**:
