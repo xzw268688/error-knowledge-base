@@ -44,6 +44,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1
 
 已安装过？加 `--force`（sh）或 `-Force`（ps1）覆盖。
 
+**安装脚本还会做第二件事**：在你的 `~/.claude/CLAUDE.md` 中追加一段常驻约定（幂等，重复安装不会重复写入），让 Agent 在**任何项目**中解决错误后都会主动询问是否记录，而不用等你手动输入 `/error-knowledge-base`。
+
+> 不想让脚本改你的全局配置？删掉 `~/.claude/CLAUDE.md` 里带 `<!-- error-knowledge-base:convention -->` 标记的那一段即可。
+
 ---
 
 ## 验证安装

@@ -35,3 +35,24 @@ mkdir -p "$HOME/.claude/skills"
 cp -r "$SKILL_SRC" "$SKILL_DEST"
 
 echo "Installed to: $SKILL_DEST"
+
+# Append the standing convention to the user-level CLAUDE.md (idempotent).
+# This is what makes the skill ask to record automatically in every session,
+# instead of requiring the user to type /error-knowledge-base by hand.
+GLOBAL_MD="$HOME/.claude/CLAUDE.md"
+CONVENTION_SRC="$REPO_ROOT/convention.md"
+MARKER="<!-- error-knowledge-base:convention -->"
+
+if [ ! -f "$GLOBAL_MD" ] || ! grep -qF "$MARKER" "$GLOBAL_MD"; then
+    if [ ! -f "$CONVENTION_SRC" ]; then
+        echo "Warning: convention.md not found; skipping global convention."
+    else
+        mkdir -p "$HOME/.claude"
+        if [ -s "$GLOBAL_MD" ]; then echo "" >> "$GLOBAL_MD"; fi
+        cat "$CONVENTION_SRC" >> "$GLOBAL_MD"
+        echo "" >> "$GLOBAL_MD"
+        echo "Convention added to: $GLOBAL_MD"
+    fi
+else
+    echo "Convention already present in: $GLOBAL_MD"
+fi

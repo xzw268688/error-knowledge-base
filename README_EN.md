@@ -56,6 +56,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1
 
 Already installed? Add `--force` (sh) or `-Force` (ps1) to reinstall.
 
+**The installer also does a second thing**: it appends a standing convention to your `~/.claude/CLAUDE.md` (idempotent — reinstalling won't duplicate it), so the agent proactively asks whether to record solved errors in **any project**, without you typing `/error-knowledge-base` manually.
+
+> Don't want the installer touching your global config? Delete the block marked `<!-- error-knowledge-base:convention -->` from `~/.claude/CLAUDE.md`.
+
 ---
 
 ## Verify Installation
