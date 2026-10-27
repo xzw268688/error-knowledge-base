@@ -4,6 +4,8 @@ English | [简体中文](README.md)
 
 > Manage your error-resolution experience: search historical solutions for similar errors, record newly solved problems.
 
+💡 **Tip**: Just say "fixed it" after solving an error and the Skill will ask whether to record it. You can also type `/error-knowledge-base` to trigger it manually.
+
 **Key Features**:
 - **Zero-config migration** — Stateless indexing, dynamic scan on each retrieval
 - **Keyword weighting + LLM semantic reranking** — Keywords only affect ordering, never block recall
@@ -24,7 +26,7 @@ Errors in development tend to repeat:
 This Skill turns your error-resolution experience into a searchable knowledge base:
 
 - **When encountering an error**: Auto-search historical solutions to avoid repeating mistakes
-- **After solving**: Auto-prompt to record, forming a closed loop
+- **After solving**: Proactively asks whether to record, forming a closed loop
 - **Agent self-discovery**: When Agent solves a new error independently, proactively prompts to record
 
 ---
@@ -32,7 +34,7 @@ This Skill turns your error-resolution experience into a searchable knowledge ba
 ## Core Principles
 
 1. **On-demand trigger**: Skill only acts when you mention errors, doesn't run in background
-2. **Zero-input record**: Just say "fixed it" after solving, Skill auto-extracts information
+2. **Zero-input record**: Just say "fixed it" after solving — the Skill extracts the details and asks whether to record (or invoke `/error-knowledge-base` directly)
 3. **Agent collaboration**: Agent can discover and solve new errors independently, then record
 4. **Privacy protection**: By default doesn't read local data unless user explicitly requests
 

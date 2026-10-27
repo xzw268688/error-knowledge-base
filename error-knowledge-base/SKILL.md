@@ -1,6 +1,6 @@
 ---
 name: error-knowledge-base
-description: "错误知识库：检索历史错误或记录新错误"
+description: "错误知识库。用户说「搞定了/解决了/跑通了/fixed/resolved/working now」时，或你（Agent）自行排查修复了一个错误之后，应主动调用此技能询问是否记录。用户描述报错、贴出错误信息、或询问某个错误怎么解决时，也应调用此技能检索历史方案。"
 ---
 
 # 错误知识库 (error-knowledge-base)
